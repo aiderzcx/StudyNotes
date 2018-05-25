@@ -1,0 +1,81 @@
+[转载][翻译]Go的50坑：新Golang开发者要注意的陷阱、技巧和常见错误[1]
+	Golang作为一个略古怪而新的语言，有自己一套特色和哲学。从其他语言转来的开发者在刚接触到的时候往往大吃苦头，
+这篇文章很细致地介绍了Golang的一些常见坑点，读完全篇中枪好多次。故将其转载, 私人存储，防止丢失。
+
+	由于文章很长，分为上下两部分，
+	第一部分: 初级篇，
+	第二部分: 进阶和高级篇
+
+	感谢原文作者Kyle Quest以及翻译者影风LEY。出处见下: 
+	原文链接：http://devs.cloudimmunity.com/gotchas-and-common-mistakes-in-go-golang/ 
+	译文链接：http://www.shwley.com/index.php/archives/80/以及http://www.shwley.com/index.php/archives/82/。
+
+	Go是一门简单有趣的语言，但与其他语言类似，它会有一些技巧。。。这些技巧的绝大部分并不是Go的缺陷造成的。
+如果你以前使用的是其他语言，那么这其中的有些错误就是很自然的陷阱。其它的是由错误的假设和缺少细节造成的。
+
+	如果你花时间学习这门语言，阅读官方说明、wiki、邮件列表讨论、大量的优秀博文和Rob Pike的展示，以及源代码，
+这些技巧中的绝大多数都是显而易见的。尽管不是每个人都是以这种方式开始学习的，但也没关系。如果你是Go语言新人，
+那么这里的信息将会节约你大量的调试代码的时间。
+
+目录
+一. 初级篇
+	01. 开大括号不能放在单独的一行
+	02. 未使用的变量
+	03. 未使用的Imports
+	04. 简式的变量声明仅可以在函数内部使用
+	05. 使用简式声明重复声明变量
+	06. 偶然的变量隐藏Accidental Variable Shadowing
+	07. 不使用显式类型，无法使用“nil”来初始化变量
+	08. 使用“nil” Slices and Maps
+	09. Map的容量
+	10. 字符串不会为“nil”
+	11. Array函数的参数
+	12. 在Slice和Array使用“range”语句时的出现的不希望得到的值
+	13. Slices和Arrays是一维的
+	14. 访问不存在的Map Keys
+	15. Strings无法修改
+	16. String和Byte Slice之间的转换
+	17. String和索引操作
+	18. 字符串不总是UTF8文本
+	19. 字符串的长度
+	20. 在多行的Slice、Array和Map语句中遗漏逗号
+	21. log.Fatal和log.Panic不仅仅是Log
+	22. 内建的数据结构操作不是同步的
+	23. String在“range”语句中的迭代值
+	24. 对Map使用“for range”语句迭代
+	25. "switch"声明中的失效行为
+	26. 自增和自减
+	27. 按位NOT操作
+	28. 操作优先级的差异
+	29. 未导出的结构体不会被编码
+	30. 有活动的Goroutines下的应用退出
+	31. 向无缓存的Channel发送消息，只要目标接收者准备好就会立即返回
+	32. 向已关闭的Channel发送会引起Panic
+	33. 使用"nil" Channels
+	34. 传值方法的接收者无法修改原有的值
+
+二. 进阶篇
+	01. 关闭HTTP的响应
+	02. 关闭HTTP的连接
+	03. 比较Structs, Arrays, Slices, and Maps
+	04. 从Panic中恢复
+	05. 在Slice, Array, and Map "range"语句中更新引用元素的值
+	06. 在Slice中"隐藏"数据
+	07. Slice的数据“毁坏”
+	08. "走味的"Slices
+	09. 类型声明和方法
+	10. 从"for switch"和"for select"代码块中跳出
+	11. "for"声明中的迭代变量和闭包
+	12. Defer函数调用参数的求值
+	13. 被Defer的函数调用执行
+	14. 失败的类型断言
+	15. 阻塞的Goroutine和资源泄露
+
+三. 高级篇
+	01. 使用指针接收方法的值的实例
+	02. 更新Map的值
+	03. "nil" Interfaces和"nil" Interfaces的值
+	04. 栈和堆变量
+	05. GOMAXPROCS, 并发, 和并行
+	06. 读写操作的重排顺序
+	07. 优先调度
