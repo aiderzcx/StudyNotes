@@ -5,7 +5,7 @@ import (
 	"customlib/log"
 	"customlib/tool"
 	"fmt"
-	"production/netpay/weixin"
+	"private/netpay/weixin"
 )
 
 type ConfigST struct {

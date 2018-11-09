@@ -8,9 +8,9 @@ import (
 	"customlib/tool"
 	"fmt"
 	"io/ioutil"
-	"production/chenjinzhi/dbm"
-	"production/chenjinzhi/wapi"
-	"production/netpay/weixin"
+	"private/chenjinzhi/dbm"
+	"private/chenjinzhi/wapi"
+	"private/netpay/weixin"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/gin-gonic/gin"
@@ -110,12 +110,10 @@ func WxScanNotify(ctx *gin.Context) {
 		return
 	}
 
-	// 3. 响应结果
-	err = wx.ScanCallBack(&req, &respData)
-	if err != err {
-		logger.Warning("wx.ScanCallBack().%v", err)
-	}
+	dbm.PrePayResp(db, prePayId)
 
+	// 3. 响应结果
+	respData.Init(prePayId)
 	return
 
 }

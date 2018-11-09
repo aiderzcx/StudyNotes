@@ -101,25 +101,30 @@ type ScanCallBackResp struct {
 	Sign       string   `xml:"sign"`
 }
 
-// 收到扫码通知
-func ScanCallBack(inReq *ScanCallBackReq, outResp *ScanCallBackResp) error {
-	// 1. 根据产品ID，获取订单信息
+func (s *ScanCallBackResp) Init(prepayId string) {
+	s.ReturnCode = RESP_SUCC
+	s.ReturnMsg = "succ"
+	s.AppId = g_conf.Scan.AppId
+	s.MchId = g_conf.Scan.MchId
+	s.NonceStr = nonceString()
+	s.PrepayId = prepayId
+	s.ResultCode = RESP_SUCC
+	s.ResultMsg = "succ"
 
-	// 2. 发起与支付流程
+	s.Sign = md5Sign(s.toMap(), g_conf.Scan.SecretKey)
+}
 
-	// 3. 响应结果
-
-	outResp.ResultCode = RESP_SUCC
-	outResp.ReturnMsg = "ok"
-	outResp.AppId = `xml:"appid"`
-	outResp.MchId = `xml:"mch_id"`
-	outResp.NonceStr = `xml:"nonce_str"`
-	outResp.PrepayId = `xml:"prepay_id"`
-	outResp.ResultCode = `xml:"result_code"`
-	outResp.ResultMsg = `xml:"err_code_des"`
-	outResp.Sign = `xml:"sign"`
-
-	return nil
+func (s *ScanCallBackResp) toMap() map[string]string {
+	return map[string]string{
+		"return_code":  s.ReturnCode,
+		"return_msg":   s.ReturnMsg,
+		"appid":        s.AppId,
+		"mch_id":       s.MchId,
+		"nonce_str":    s.NonceStr,
+		"prepay_id":    s.PrepayId,
+		"result_code":  s.ResultCode,
+		"err_code_des": s.ResultMsg,
+	}
 }
 
 func ScanPrePay(inParam *PrePayParamST) (string, error) {

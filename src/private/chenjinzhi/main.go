@@ -4,8 +4,8 @@ import (
 	"customlib/mservice/gincom"
 	"flag"
 	"fmt"
-	"production/chenjinzhi/conf"
-	"production/chenjinzhi/router"
+	"private/chenjinzhi/conf"
+	"private/chenjinzhi/router"
 )
 
 var (

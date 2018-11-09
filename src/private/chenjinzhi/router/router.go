@@ -1,7 +1,7 @@
 package router
 
 import (
-	"production/chenjinzhi/logic"
+	"private/chenjinzhi/logic"
 
 	"github.com/gin-gonic/gin"
 )

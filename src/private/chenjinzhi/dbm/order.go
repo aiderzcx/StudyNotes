@@ -13,11 +13,13 @@ func init() {
 
 const (
 	PAY_STATE_NIL       = iota // 空状态
-	PAY_STATE_WAIT_NTF         // 发起预支付，等待支付回调
-	PAY_STATE_SUCC             // 支付成功
-	PAY_STATE_FAIL             // 支付失败
-	PAY_STATE_REFUNDING        // 正在退款
-	PAY_STATE_REFUNDED         // 已经退款
+	PAY_STATE_SCANED           // 收到扫码支付
+	PAY_STATE_PREPAYING        // 发起预支付，等待支付回调
+	PAY_STATE_PREPAY_FAIL
+	PAY_STATE_SUCC      // 支付成功
+	PAY_STATE_FAIL      // 支付失败
+	PAY_STATE_REFUNDING // 正在退款
+	PAY_STATE_REFUNDED  // 已经退款
 )
 
 type PayOrderTB struct {
