@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"bytes"
 	"customlib/log"
 	"customlib/mservice/gincom"
 	"customlib/mservice/mtrace"
@@ -75,9 +76,9 @@ func WxScanNotify(ctx *gin.Context) {
 
 	logger.Info("WxScanNotify req: %+v", req)
 
-	db := orm.NewOrmer()
+	db := orm.NewOrm()
 	// 1 获取产品信息
-	order, err := dbm.ProductOrder(db, req.ProductId)
+	order, err := dbm.StartPrepay(db, req.ProductId)
 	if nil != err {
 		respData.ResultCode = wx.RESP_FAIL
 		respData.ResultMsg = "query db error"
@@ -86,7 +87,7 @@ func WxScanNotify(ctx *gin.Context) {
 	}
 
 	// 如果状态是等待支付通知以上，则直接发回成功
-	if order.State >= db.PAY_STATE_WAIT_NTF {
+	if order.State >= dbm.PAY_STATE_PREPAY_FAIL {
 		respData.ResultCode = wx.RESP_SUCC
 		respData.ResultMsg = "repeat notify"
 		logger.Info("order state(%d) not init", order.State)
@@ -98,11 +99,11 @@ func WxScanNotify(ctx *gin.Context) {
 	param.OrderId = order.PayId
 	param.OrderDesc = order.ProductDesc
 	param.TotalFee = order.TotalFee
-	param.TradeType = order.TradeType
+	param.TradeType = order.PayType
 	param.ProductId = order.ProductId
 	param.Logger = &logger
 
-	prePayId, err := wx.ScanPrePay(&param)
+	result, err := wx.ScanPrePay(&param)
 	if nil != err {
 		respData.ResultCode = wx.RESP_FAIL
 		respData.ResultMsg = "prepay error"
@@ -110,28 +111,123 @@ func WxScanNotify(ctx *gin.Context) {
 		return
 	}
 
-	dbm.PrePayResp(db, prePayId)
+	if result.Code == wx.RESP_DROP {
+		respData.ResultCode = wx.RESP_SUCC
+		respData.ResultMsg = "drop msg"
+		logger.Warning("wx.ScanPrePay(%+v) drop msg", param)
+		return
+	}
+
+	order.ThirdId = result.PrepayId
+	order.PayType = result.TradeType
+	if result.Code == wx.RESP_SUCC {
+		order.State = dbm.PAY_STATE_PREPAYED
+	} else {
+		order.State = dbm.PAY_STATE_PREPAY_FAIL
+		order.Remarks = fmt.Sprintf("[%s]", result.Code)
+	}
+
+	err = dbm.PrePayResp(db, order)
+	if nil != err {
+		respData.ResultCode = wx.RESP_FAIL
+		respData.ResultMsg = "update db fail"
+		logger.Warning("dbm.PrePaySucc().%v", err)
+		return
+	}
 
 	// 3. 响应结果
-	respData.Init(prePayId)
+	respData.Update(result.PrepayId)
 	return
 
 }
 
 func WxScanPayNotify(ctx *gin.Context) {
 	var respData wx.PayNotifyResp
+	respData.ReturnCode = wx.RESP_FAIL
 
 	logger, dataMap, err := xmlReqToMap(ctx, "WxScanPayNotify")
 	defer gincom.RespXmlData(ctx, &respData, logger)
 
 	if nil != err {
 		logger.Warning("gincom.Prepare().%v", err)
+		respData.ReturnMsg = "msg err"
 		return
 	}
 
 	logger.Info("WxScanPayNotify req: %+v", dataMap)
+
+	// 1 调用微信的支付通知函数处理
+	result, err := wx.ScanPayNotif(dataMap)
+	if nil != err {
+		respData.ReturnMsg = "msg err"
+		logger.Warning("wx.ScanPayNotif().%v", err)
+		return
+	}
+
+	logger.Debug("ScanPayNotif.Result(%+v)", result)
+
+	// 2 更新数据库信息
+	db := orm.NewOrm()
+	order, err := dbm.OrderInfo(db, result.SpOrderId)
+	if nil != err {
+		respData.ReturnMsg = "db.query error"
+		logger.Warning("dbm.OrderInfo(%s).%v", result.SpOrderId, err)
+		return
+	}
+
+	if order.PayType != result.TradeType ||
+		order.TotalFee != result.TotalFee ||
+		order.ThirdId != result.WxOrderId {
+		respData.ReturnMsg = "params not matched"
+		logger.Warning("payType,totalFee,ThirdId not matched")
+		return
+	}
+
+	if order.State >= dbm.PAY_STATE_PAY_SUCC {
+		logger.Warning("the order(%s).state(%d) recv pay notify", order.PayId, order.State)
+		respData.ReturnCode = wx.RESP_SUCC
+		respData.ReturnMsg = "ok"
+		return
+	}
+
+	order.PayAt = transWxTm2Db(result.PayTime)
+	if result.Code == wx.RESP_SUCC {
+		order.State = dbm.PAY_STATE_PAY_SUCC
+	} else {
+		order.State = dbm.PAY_STATE_PAY_FAIL
+		order.Remarks += fmt.Sprintf("[%s]", result.Code)
+	}
+
+	err = dbm.PayCallback(db, order)
+	if nil != err {
+		respData.ReturnMsg = "db.update error"
+		logger.Warning("dbm.PayCallback(%s).%v", result.SpOrderId, err)
+		return
+	}
+
 	respData.ReturnCode = wx.RESP_SUCC
 	respData.ReturnMsg = "ok"
-
 	return
+}
+
+func transWxTm2Db(inTm string) string {
+	if inTm == "" {
+		return tool.CurTimeNormal()
+	}
+
+	var buf bytes.Buffer
+
+	buf.WriteString(inTm[0:4]) // yyyy
+	buf.WriteString("-")
+	buf.WriteString(inTm[4:6]) //MM
+	buf.WriteString("-")
+	buf.WriteString(inTm[6:8]) // DD
+	buf.WriteString(" ")
+	buf.WriteString(inTm[8:10]) // HH
+	buf.WriteString(":")
+	buf.WriteString(inTm[10:12]) // MM
+	buf.WriteString(":")
+	buf.WriteString(inTm[12:14]) // SS
+
+	return buf.String()
 }

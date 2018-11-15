@@ -101,7 +101,7 @@ type ScanCallBackResp struct {
 	Sign       string   `xml:"sign"`
 }
 
-func (s *ScanCallBackResp) Init(prepayId string) {
+func (s *ScanCallBackResp) Update(prepayId string) {
 	s.ReturnCode = RESP_SUCC
 	s.ReturnMsg = "succ"
 	s.AppId = g_conf.Scan.AppId
@@ -127,10 +127,10 @@ func (s *ScanCallBackResp) toMap() map[string]string {
 	}
 }
 
-func ScanPrePay(inParam *PrePayParamST) (string, error) {
+func ScanPrePay(inParam *PrePayParamST) (PrePayResultST, error) {
 	return PrepayToWx(g_conf.Scan, inParam)
 }
 
-func ScanPayNotif(inParam map[string]string, outResp *PayNotifyResp) error {
-	return PayNotify(g_conf.Scan, inParam, outResp)
+func ScanPayNotif(inParam map[string]string) (PayNtfResultST, error) {
+	return PayNotify(g_conf.Scan, inParam)
 }

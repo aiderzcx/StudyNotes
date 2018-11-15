@@ -9,15 +9,9 @@ import (
 )
 
 const (
-	msg_succ         = iota // 消息check成功
-	msg_error               // 消息错误丢弃消息
-	return_code_fail        // returnCode错误，重试
-	result_code_fail        // resultCode错误，流程结束
-)
-
-const (
 	RESP_SUCC = "SUCCESS"
 	RESP_FAIL = "FAIL"
+	RESP_DROP = "DROP" // SYSTEMERROR	系统错误	系统超时	系统异常，请用相同参数重新调用
 )
 
 const (
@@ -25,39 +19,49 @@ const (
 )
 
 // 检测微信的Resp消息
-func checkWxRespMsg(inParam map[string]string, inKey string) (int, error) {
+func checkWxRespMsg(inParam map[string]string, inConf ConfItemST) (string, error) {
 	if len(inParam) <= min_param_len {
-		return msg_error, fmt.Errorf("param not enough")
+		return RESP_FAIL, fmt.Errorf("param not enough")
+	}
+
+	if inParam["appid"] != inConf.AppId ||
+		inParam["mch_id"] != inConf.MchId {
+		return RESP_FAIL, fmt.Errorf("apid or mchid not matched")
 	}
 
 	returnCode, exist := inParam["return_code"]
 	if !exist {
-		return msg_error, fmt.Errorf("no return_code")
+		return RESP_FAIL, fmt.Errorf("no return_code")
 	}
 
-	if returnCode != "SUCCESS" {
-		return return_code_fail, fmt.Errorf("return Code(%s), msg(%s)", returnCode, inParam["return_msg"])
+	if returnCode != RESP_SUCC {
+		return RESP_FAIL, fmt.Errorf("return Code(%s), msg(%s)", returnCode, inParam["return_msg"])
 	}
 
 	_, exist = inParam["sign"]
 	if !exist {
-		return msg_error, fmt.Errorf("no sign")
+		return RESP_FAIL, fmt.Errorf("no sign")
 	}
 
 	resultCode, exist := inParam["result_code"]
 	if !exist {
-		return msg_error, fmt.Errorf("no result_code")
-	}
-
-	if resultCode != "SUCCESS" {
-		return result_code_fail, fmt.Errorf("result Code(%s), msg(%s)", resultCode, inParam["err_code_des"])
+		return RESP_FAIL, fmt.Errorf("no result_code")
 	}
 
 	// 消息鉴权
-	err := verifyMd5Sign(inParam, inKey)
+	err := verifyMd5Sign(inParam, inConf.SecretKey)
 	if nil != err {
-		return msg_error, err
+		return RESP_FAIL, err
 	}
 
-	return msg_succ, nil
+	// SYSTEMERROR	系统错误	系统超时	系统异常，请用相同参数重新调用
+	if resultCode != RESP_SUCC {
+		if resultCode == "SYSTEMERROR" {
+			return RESP_DROP, nil
+		} else {
+			return inParam["err_code"], nil
+		}
+	}
+
+	return RESP_SUCC, nil
 }

@@ -3,6 +3,8 @@ package wx
 import (
 	"customlib/log"
 	"customlib/mservice/httpc"
+	"customlib/tool"
+	"encoding/xml"
 	"fmt"
 )
 
@@ -39,7 +41,7 @@ func (p *PrePayReq) ToMap() map[string]string {
 		"mch_id":           p.MchId,
 		"body":             p.OrderDesc,
 		"out_trade_no":     p.OrderId,
-		"total_fee":        p.TotalFee,
+		"total_fee":        fmt.Sprintf("%d", p.TotalFee),
 		"spbill_create_ip": p.ServerIp,
 		"notify_url":       p.NotifyUrl,
 		"trade_type":       p.TradeType,
@@ -58,22 +60,6 @@ func (p *PrePayReq) ToMap() map[string]string {
 	return result
 }
 
-type ScanCallBackResp struct {
-	XMLName    xml.Name `xml:"xml"`
-	ReturnCode string   `xml:"return_code"`
-	ReturnMsg  string   `xml:"return_msg"`
-	AppId      string   `xml:"appid"`
-	MchId      string   `xml:"mch_id"`
-	NonceStr   string   `xml:"nonce_str"`
-	PrepayId   string   `xml:"prepay_id"`
-	ResultCode string   `xml:"result_code"`
-	ErrCode    string   `xml:"err_code"`
-	ResultMsg  string   `xml:"err_code_des"`
-	TradeType  string   `xml:"trade_type"`
-	PrepayId   string   `xml:"prepay_id"`
-	Sign       string   `xml:"sign"`
-}
-
 type PrePayParamST struct {
 	OrderId   string
 	OrderDesc string
@@ -84,8 +70,15 @@ type PrePayParamST struct {
 	Logger    *log.LoggerST
 }
 
+type PrePayResultST struct {
+	Code      string
+	TradeType string
+	PrepayId  string
+	CodeUrl   string
+}
+
 // 返回与支付ID
-func PrepayToWx(inConf ConfItemST, inParam PrePayParamST) (string, error) {
+func PrepayToWx(inConf ConfItemST, inParam *PrePayParamST) (PrePayResultST, error) {
 	var req PrePayReq
 	req.AppId = inConf.AppId
 	req.MchId = inConf.MchId
@@ -104,21 +97,36 @@ func PrepayToWx(inConf ConfItemST, inParam PrePayParamST) (string, error) {
 	reqData := req.ToMap()
 	inParam.Logger.Debug("prePay.req: %+v", reqData)
 
-	respBuf, err := httpc.TlsPostXml(pre_pay_url, &tool.NewXmlTrans(reqData), 0)
+	var result PrePayResultST
+	respBuf, err := httpc.TlsPostXml(pre_pay_url, tool.NewXmlTrans(reqData), 0)
 	if nil != err {
-		return "", fmt.Errorf("TlsPostXml().%v", err)
+		return result, fmt.Errorf("TlsPostXml().%v", err)
 	}
 
 	inParam.Logger.Debug("prePay.Resp: %s", string(respBuf))
 
 	respData, err := tool.XmlTransToMap(respBuf)
 	if nil != err {
-		return "", fmt.Printf("XmlTransToMap().%v", err)
+		return result, fmt.Errorf("XmlTransToMap().%v", err)
 	}
 
-	if code, err := checkWxRespMsg(respData, inConf.SecretKey); nil != err {
-		return "", fmt.Printf("checkWxRespMsg().%v", err)
+	code, err := checkWxRespMsg(respData, inConf)
+	if nil != err {
+		return result, fmt.Errorf("checkWxRespMsg(): %s %v", code, err)
 	}
 
-	return respData[NTF_PREPAY_ID], nil
+	var ok bool
+	result.Code = code
+	result.TradeType, ok = respData["trade_type"]
+	if !ok {
+		return result, fmt.Errorf("no trade_type")
+	}
+
+	result.PrepayId, ok = respData["prepay_id"]
+	if !ok {
+		return result, fmt.Errorf("no prepay_id")
+	}
+
+	result.CodeUrl = respData["code_url"] // 可选参数
+	return result, nil
 }

@@ -2,7 +2,7 @@
 	"SrvId":"001",
 	"Listen":":9901",
 	"Log":{"ServerName":"cjz","Level":"debug","OutPut":"stdout","OutPath":"","Format":"text","LogLevel":0,"FileSize":500,"ItemMaxLen":1024},
-	"Wx":"{\"Scan\":{\"AppId\":\"appid\",\"MchId\":\"mchid\",\"SecretKey\":\"md5ke\",\"CallBackUrl\":\"callbackurl\",\"ServerIp\":\"127.0.0.1\"}}",
+	"Wx":"{\"Scan\":{\"AppId\":\"wx11cafa416d973a21\",\"MchId\":\"1513377131\",\"SecretKey\":\"dac5c47ee9c6405487785eddb53e64b4\",\"CallBackUrl\":\"http://www.zhichenyl.com/wx/scan/pay/notify\",\"ServerIp\":\"39.105.38.226\"}}",
 	"Mysql":{"User":"Dev","Pw":"DevPw123!","Host":"39.105.38.226:3306","DbName":"netpay","Params":"charset=utf8&loc=Asia%2FShanghai","MaxIdle":2,"MaxConn":4,"Debug":true},
 	"End":""
 }
