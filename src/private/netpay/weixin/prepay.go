@@ -14,7 +14,7 @@ const (
 
 const (
 	PAY_TYPE_JSAPI  = "JSAPI"
-	PAY_TYPE_NATIVE = "Native"
+	PAY_TYPE_NATIVE = "NATIVE"
 	PAY_TYPE_APP    = "APP"
 	PAY_TYPE_MWEB   = "MWEB"
 )
