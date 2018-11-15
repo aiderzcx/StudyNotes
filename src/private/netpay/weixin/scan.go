@@ -128,6 +128,7 @@ func (s *ScanCallBackResp) toMap() map[string]string {
 }
 
 func ScanPrePay(inParam *PrePayParamST) (PrePayResultST, error) {
+	inParam.TradeType = PAY_TYPE_NATIVE
 	return PrepayToWx(g_conf.Scan, inParam)
 }
 

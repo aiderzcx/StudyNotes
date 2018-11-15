@@ -13,6 +13,13 @@ const (
 )
 
 const (
+	PAY_TYPE_JSAPI  = "JSAPI"
+	PAY_TYPE_NATIVE = "Native"
+	PAY_TYPE_APP    = "APP"
+	PAY_TYPE_MWEB   = "MWEB"
+)
+
+const (
 	NTF_APP_ID     = "appid"
 	NTF_MCH_ID     = "mch_id"
 	NTF_TRADE_TYPE = "trade_type"

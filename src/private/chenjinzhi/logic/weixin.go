@@ -118,7 +118,7 @@ func WxScanNotify(ctx *gin.Context) {
 		return
 	}
 
-	order.ThirdId = result.PrepayId
+	order.ThirdPreId = result.PrepayId
 	order.PayType = result.TradeType
 	if result.Code == wx.RESP_SUCC {
 		order.State = dbm.PAY_STATE_PREPAYED
@@ -176,8 +176,7 @@ func WxScanPayNotify(ctx *gin.Context) {
 	}
 
 	if order.PayType != result.TradeType ||
-		order.TotalFee != result.TotalFee ||
-		order.ThirdId != result.WxOrderId {
+		order.TotalFee != result.TotalFee {
 		respData.ReturnMsg = "params not matched"
 		logger.Warning("payType,totalFee,ThirdId not matched")
 		return
@@ -191,6 +190,8 @@ func WxScanPayNotify(ctx *gin.Context) {
 	}
 
 	order.PayAt = transWxTm2Db(result.PayTime)
+	order.ThirdId = result.WxOrderId
+
 	if result.Code == wx.RESP_SUCC {
 		order.State = dbm.PAY_STATE_PAY_SUCC
 	} else {

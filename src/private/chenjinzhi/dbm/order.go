@@ -39,7 +39,8 @@ type PayOrderTB struct {
 	TotalFee    int64
 	PayId       string
 	PayType     string
-	ThirdId     string
+	ThirdPreId  string // 第三方的预支付ID
+	ThirdId     string // 第三方的支付ID
 	State       int
 	Remarks     string // 支付失败的原因
 	CreateAt    string // 订单创建时间
@@ -99,14 +100,14 @@ func OrderInfo(db orm.Ormer, payId string) (*PayOrderTB, error) {
 func StartPrepay(db orm.Ormer, inProductId string) (*PayOrderTB, error) {
 	var order PayOrderTB
 
-	err := db.QueryTable(&order).Filter("production_id", inProductId).One(&order)
+	err := db.QueryTable(&order).Filter("product_id", inProductId).One(&order)
 	if nil != err {
 		return nil, err
 	}
 
 	// 没有订单，更新订单
 	if order.PayId == "" {
-		order.PayId = fmt.Sprintf("%s%9d", transDbTm2Wx(order.CreateAt), order.Id)
+		order.PayId = fmt.Sprintf("%s%09d", transDbTm2Wx(order.CreateAt), order.Id)
 		_, err = db.Update(&order, "pay_id")
 		if nil != err {
 			return nil, err
@@ -117,12 +118,12 @@ func StartPrepay(db orm.Ormer, inProductId string) (*PayOrderTB, error) {
 }
 
 func PrePayResp(db orm.Ormer, order *PayOrderTB) error {
-	_, err := db.Update(order, "pay_id", "pay_type", "state", "remarks")
+	_, err := db.Update(order, "pay_id", "pay_type", "third_pre_id", "state", "remarks")
 	return err
 }
 
 func PayCallback(db orm.Ormer, inOrder *PayOrderTB) error {
-	_, err := db.Update(&inOrder, "state", "pay_at", "remarks")
+	_, err := db.Update(inOrder, "third_id", "state", "pay_at", "remarks")
 	return err
 }
 
@@ -151,8 +152,12 @@ func UpdateQueryOrder(db orm.Ormer, orders *PayOrderTB) error {
 	return nil
 }
 
+const (
+	std_tm_len = len("2006-01-02 15:04:05")
+)
+
 func transDbTm2Wx(inTm string) string {
-	if inTm == "" {
+	if len(inTm) < std_tm_len {
 		return time.Now().Format("20060102150405")
 	}
 
@@ -163,7 +168,7 @@ func transDbTm2Wx(inTm string) string {
 	buf.WriteString(inTm[8:10])  // DD
 	buf.WriteString(inTm[11:13]) // HH
 	buf.WriteString(inTm[14:16]) // MM
-	buf.WriteString(inTm[17:19]) // SS
+	buf.WriteString(inTm[17:])   // SS
 
 	return buf.String()
 }
