@@ -116,6 +116,7 @@
 
     ---删除磁盘组
     select GROUP_NUMBER,DISK_NUMBER,TOTAL_MB,FREE_MB,NAME from v$asm_disk; 
-
+    执行删除：
+    alter diskgroup DATA drop disk DATA1; 
     
     
